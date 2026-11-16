@@ -4,10 +4,21 @@ export function isCompressed(name: string): boolean {
   return /\.zst$/i.test(name)
 }
 
-export function describeFilter(themes: string[], all: boolean, minMoves: number, maxMoves: number, minRating: number, maxRating: number): string {
+export function describeFilter(
+  themes: string[],
+  all: boolean,
+  minMoves: number,
+  maxMoves: number,
+  minRating: number,
+  maxRating: number,
+  minPop: number,
+  maxPop: number,
+): string {
   const nomes = themes.length ? themes.join(all ? ' + ' : ' ou ') : 'qualquer tema'
   const lances = minMoves === maxMoves ? String(minMoves) : `${minMoves}–${maxMoves}`
-  return `${nomes}, ${lances} lance${maxMoves > 1 ? 's' : ''}, rating ${minRating}–${maxRating}`
+  const base = `${nomes}, ${lances} lance${maxMoves > 1 ? 's' : ''}, rating ${minRating}–${maxRating}`
+  if (minPop <= -100 && maxPop >= 100) return base
+  return `${base}, popularidade ${minPop}–${maxPop}`
 }
 
 export async function filterCsv(
@@ -30,6 +41,8 @@ export async function filterCsv(
     rows++
     const r = +p[3]
     if (r < options.minRating || r > options.maxRating) return
+    const pop = +p[5]
+    if (pop < options.minPop || pop > options.maxPop) return
     const n = p[2].split(' ').length / 2
     if (n < options.minMoves || n > options.maxMoves) return
     if (options.themes.length) {
@@ -41,7 +54,7 @@ export async function filterCsv(
     }
     if (options.skipDone && options.done.has(p[0])) return
     cnt++
-    const o = { i: p[0], r }
+    const o = { i: p[0], r, fen: p[1], pop }
     if (res.length < lim) res.push(o)
     else if (options.random) {
       const j = Math.floor(Math.random() * cnt)

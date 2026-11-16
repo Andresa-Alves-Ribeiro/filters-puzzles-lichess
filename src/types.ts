@@ -1,11 +1,39 @@
 export type PuzzleItem = {
   i: string
   r: number
+  fen?: string
+  pop?: number
 }
 
 export type ThemeMode = 'all' | 'any'
 
 export type ViewMode = 'all' | 'pend'
+
+export type ThemeChoice = 'light' | 'dark'
+
+export type FilterPrefs = {
+  themes: string[]
+  extra: string
+  mode: ThemeMode
+  minMoves: string
+  maxMoves: string
+  minRating: string
+  maxRating: string
+  minPop: string
+  maxPop: string
+  limit: string
+  random: boolean
+  order: 1 | -1
+  skipDone: boolean
+}
+
+export type DailyProgress = {
+  date: string
+  goal: number
+  ids: string[]
+  streak: number
+  lastMet: string | null
+}
 
 export type FilterOptions = {
   themes: string[]
@@ -14,6 +42,8 @@ export type FilterOptions = {
   maxMoves: number
   minRating: number
   maxRating: number
+  minPop: number
+  maxPop: number
   limit: number
   random: boolean
   order: 1 | -1
@@ -32,4 +62,20 @@ export type FilterResult = {
   items: PuzzleItem[]
   rows: number
   matches: number
+}
+
+export const DEFAULT_FILTERS: FilterPrefs = {
+  themes: ['fork'],
+  extra: '',
+  mode: 'all',
+  minMoves: '1',
+  maxMoves: '1',
+  minRating: '0',
+  maxRating: '4000',
+  minPop: '-100',
+  maxPop: '100',
+  limit: '500',
+  random: true,
+  order: 1,
+  skipDone: true,
 }

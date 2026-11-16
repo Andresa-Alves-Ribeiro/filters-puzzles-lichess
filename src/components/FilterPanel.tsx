@@ -1,47 +1,50 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { describeFilter, filterCsv, isCompressed } from '../filterCsv.ts'
-import { DEFAULT_THEME, THEMES } from '../themes.ts'
-import type { FilterResult, PuzzleItem } from '../types.ts'
+import type { FilterPrefs, FilterResult, PuzzleItem } from '../types.ts'
+import { ThemePicker } from './ThemePicker.tsx'
 
 type FilterPanelProps = {
   done: Set<string>
   startOpen: boolean
+  filters: FilterPrefs
+  onChange: (patch: Partial<FilterPrefs>) => void
   onApply: (items: PuzzleItem[], info: string) => void
 }
 
-export function FilterPanel({ done, startOpen, onApply }: FilterPanelProps) {
+export function FilterPanel({ done, startOpen, filters, onChange, onApply }: FilterPanelProps) {
   const [file, setFile] = useState<File | null>(null)
-  const [selected, setSelected] = useState<Set<string>>(() => new Set([DEFAULT_THEME]))
-  const [extra, setExtra] = useState('')
-  const [mode, setMode] = useState<'all' | 'any'>('all')
-  const [minMoves, setMinMoves] = useState('1')
-  const [maxMoves, setMaxMoves] = useState('1')
-  const [minRating, setMinRating] = useState('0')
-  const [maxRating, setMaxRating] = useState('4000')
-  const [limit, setLimit] = useState('500')
-  const [random, setRandom] = useState(true)
-  const [order, setOrder] = useState<1 | -1>(1)
-  const [skipDone, setSkipDone] = useState(true)
   const [filtering, setFiltering] = useState(false)
   const [showProgress, setShowProgress] = useState(false)
   const [progress, setProgress] = useState(0)
   const [progressMax, setProgressMax] = useState(1)
   const [status, setStatus] = useState('')
+  const detailsRef = useRef<HTMLDetailsElement>(null)
+  const selected = useMemo(() => new Set(filters.themes), [filters.themes])
+
+  useEffect(() => {
+    const media = window.matchMedia('(min-width: 960px)')
+    function sync() {
+      if (media.matches && detailsRef.current) detailsRef.current.open = true
+    }
+    sync()
+    media.addEventListener('change', sync)
+    return () => media.removeEventListener('change', sync)
+  }, [])
 
   function rememberDetails(node: HTMLDetailsElement | null) {
+    detailsRef.current = node
     if (node && node.dataset.ready !== '1') {
-      node.open = startOpen
+      const desktop = window.matchMedia('(min-width: 960px)').matches
+      node.open = desktop || startOpen
       node.dataset.ready = '1'
     }
   }
 
   function toggleTheme(key: string) {
-    setSelected((prev) => {
-      const next = new Set(prev)
-      if (next.has(key)) next.delete(key)
-      else next.add(key)
-      return next
-    })
+    const themes = filters.themes.includes(key)
+      ? filters.themes.filter((theme) => theme !== key)
+      : [...filters.themes, key]
+    onChange({ themes })
   }
 
   function onFile(next: File | null) {
@@ -56,12 +59,14 @@ export function FilterPanel({ done, startOpen, onApply }: FilterPanelProps) {
 
   async function onFilter() {
     if (!file || filtering) return
-    const themes = [...selected, ...extra.trim().split(/\s+/).filter(Boolean)]
-    const mn = +minMoves || 1
-    const mx = +maxMoves || 999
-    const rmin = +minRating
-    const rmax = +maxRating
-    const lim = +limit || 500
+    const themes = [...filters.themes, ...filters.extra.trim().split(/\s+/).filter(Boolean)]
+    const mn = +filters.minMoves || 1
+    const mx = +filters.maxMoves || 999
+    const rmin = +filters.minRating
+    const rmax = +filters.maxRating
+    const pmin = +filters.minPop
+    const pmax = +filters.maxPop
+    const lim = +filters.limit || 500
     setFiltering(true)
     setShowProgress(true)
     setProgress(0)
@@ -71,26 +76,28 @@ export function FilterPanel({ done, startOpen, onApply }: FilterPanelProps) {
         file,
         {
           themes,
-          mode,
+          mode: filters.mode,
           minMoves: mn,
           maxMoves: mx,
           minRating: rmin,
           maxRating: rmax,
+          minPop: Number.isNaN(pmin) ? -100 : pmin,
+          maxPop: Number.isNaN(pmax) ? 100 : pmax,
           limit: lim,
-          random,
-          order,
-          skipDone,
+          random: filters.random,
+          order: filters.order,
+          skipDone: filters.skipDone,
           done,
         },
-        (p) => {
-          setProgress(p.read)
+        (step) => {
+          setProgress(step.read)
           setStatus(
-            `${p.rows.toLocaleString('pt-BR')} puzzles lidos, ${p.matches.toLocaleString('pt-BR')} encontrados`,
+            `${step.rows.toLocaleString('pt-BR')} puzzles lidos, ${step.matches.toLocaleString('pt-BR')} encontrados`,
           )
         },
       )
       setProgress(file.size)
-      const info = describeFilter(themes, mode === 'all', mn, mx, rmin, rmax)
+      const info = describeFilter(themes, filters.mode === 'all', mn, mx, rmin, rmax, pmin, pmax)
       const kept =
         result.matches > result.items.length
           ? ` (guardados ${result.items.length.toLocaleString('pt-BR')})`
@@ -99,8 +106,8 @@ export function FilterPanel({ done, startOpen, onApply }: FilterPanelProps) {
         `${result.rows.toLocaleString('pt-BR')} puzzles lidos, ${result.matches.toLocaleString('pt-BR')} correspondem${kept}. Lista salva.`,
       )
       onApply(result.items, info)
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
       setStatus(`Erro ao ler o arquivo: ${message}`)
     } finally {
       setFiltering(false)
@@ -108,106 +115,110 @@ export function FilterPanel({ done, startOpen, onApply }: FilterPanelProps) {
   }
 
   return (
-    <details className="card" ref={rememberDetails}>
-      <summary>Filtrar novo CSV</summary>
+    <details className="card filters" ref={rememberDetails}>
+      <summary>Filtros</summary>
+      <h2 className="only-desk">Filtros</h2>
 
-      <h2>1. Arquivo CSV (já descompactado)</h2>
+      <h2>1. Arquivo CSV</h2>
       <input
+        className="file"
         type="file"
         accept=".csv,text/csv"
-        onChange={(e) => onFile(e.target.files?.[0] ?? null)}
+        onChange={(event) => onFile(event.target.files?.[0] ?? null)}
       />
 
       <h2 className="sp">2. Temas</h2>
-      <div id="themes">
-        {THEMES.map(([key, label]) => (
-          <label key={key}>
-            <input
-              type="checkbox"
-              value={key}
-              checked={selected.has(key)}
-              onChange={() => toggleTheme(key)}
-            />{' '}
-            {label}
-          </label>
-        ))}
-      </div>
-      <div className="row" style={{ marginTop: 10 }}>
+      <ThemePicker selected={selected} onToggle={toggleTheme} />
+      <div className="row">
         <div className="grow">
           <span>Outros temas (separados por espaço)</span>
           <input
             type="text"
-            value={extra}
+            value={filters.extra}
             placeholder="ex.: mateIn3 crushing"
-            onChange={(e) => setExtra(e.target.value)}
+            onChange={(event) => onChange({ extra: event.target.value })}
           />
         </div>
         <div>
           <span>Combinar temas</span>
-          <select value={mode} onChange={(e) => setMode(e.target.value === 'any' ? 'any' : 'all')}>
+          <select
+            value={filters.mode}
+            onChange={(event) => onChange({ mode: event.target.value === 'any' ? 'any' : 'all' })}
+          >
             <option value="all">Todos (E)</option>
             <option value="any">Qualquer (OU)</option>
           </select>
         </div>
       </div>
 
-      <h2 className="sp">3. Lances e rating</h2>
+      <h2 className="sp">3. Lances, rating e popularidade</h2>
       <div className="row">
         <div>
           <span>Lances mín.</span>
-          <input type="number" min={1} value={minMoves} onChange={(e) => setMinMoves(e.target.value)} />
-        </div>
-        <div>
-          <span>Lances máx.</span>
-          <input type="number" min={1} value={maxMoves} onChange={(e) => setMaxMoves(e.target.value)} />
-        </div>
-        <div>
-          <span>Rating mín.</span>
-          <input type="number" value={minRating} onChange={(e) => setMinRating(e.target.value)} />
-        </div>
-        <div>
-          <span>Rating máx.</span>
-          <input type="number" value={maxRating} onChange={(e) => setMaxRating(e.target.value)} />
-        </div>
-      </div>
-      <p className="m">Lances = lances do jogador (sem contar a jogada inicial do adversário).</p>
-
-      <h2 className="sp">4. Resultado</h2>
-      <div className="row">
-        <div>
-          <span>Máx. de puzzles (até 10000)</span>
           <input
             type="number"
             min={1}
-            max={10000}
-            value={limit}
-            onChange={(e) => setLimit(e.target.value)}
+            value={filters.minMoves}
+            onChange={(event) => onChange({ minMoves: event.target.value })}
           />
         </div>
         <div>
-          <span>Seleção</span>
-          <select value={random ? '1' : '0'} onChange={(e) => setRandom(e.target.value === '1')}>
-            <option value="1">Aleatórios</option>
-            <option value="0">Primeiros do arquivo</option>
-          </select>
+          <span>Lances máx.</span>
+          <input
+            type="number"
+            min={1}
+            value={filters.maxMoves}
+            onChange={(event) => onChange({ maxMoves: event.target.value })}
+          />
         </div>
         <div>
-          <span>Ordem por rating</span>
-          <select value={String(order)} onChange={(e) => setOrder(e.target.value === '-1' ? -1 : 1)}>
-            <option value="1">Crescente</option>
-            <option value="-1">Decrescente</option>
-          </select>
+          <span>Rating mín.</span>
+          <input
+            type="number"
+            value={filters.minRating}
+            onChange={(event) => onChange({ minRating: event.target.value })}
+          />
+        </div>
+        <div>
+          <span>Rating máx.</span>
+          <input
+            type="number"
+            value={filters.maxRating}
+            onChange={(event) => onChange({ maxRating: event.target.value })}
+          />
+        </div>
+        <div>
+          <span>Popularidade mín.</span>
+          <input
+            type="number"
+            min={-100}
+            max={100}
+            value={filters.minPop}
+            onChange={(event) => onChange({ minPop: event.target.value })}
+          />
+        </div>
+        <div>
+          <span>Popularidade máx.</span>
+          <input
+            type="number"
+            min={-100}
+            max={100}
+            value={filters.maxPop}
+            onChange={(event) => onChange({ maxPop: event.target.value })}
+          />
         </div>
       </div>
-      <label className="skip">
-        <input type="checkbox" checked={skipDone} onChange={(e) => setSkipDone(e.target.checked)} /> Pular
-        puzzles que já marquei como feitos
-      </label>
-      <button type="button" disabled={!file || filtering} onClick={() => void onFilter()}>
-        Filtrar
+      <p className="m">
+        Lances = lances do jogador, sem a jogada inicial do adversário. Popularidade vai de -100 a 100.
+      </p>
+
+      <button type="button" className="primary" disabled={!file || filtering} onClick={() => void onFilter()}>
+        {filtering ? 'Filtrando…' : 'Filtrar'}
       </button>
       <progress className={showProgress ? undefined : 'hide'} value={progress} max={progressMax} />
-      <div className="m">{status}</div>
+      <div className="m" role="status">
+        {status}
+      </div>
       <p className="m">Uma nova lista substitui a anterior. Os puzzles feitos continuam marcados.</p>
     </details>
   )
