@@ -8,11 +8,11 @@ Cada puzzle da lista abre em `https://lichess.org/training/{id}`.
 
 ## Capturas
 
-<img width="546" height="1009" alt="5" src="https://github.com/user-attachments/assets/93ecb3d9-eee1-4894-ab46-79d503619b24" />
-<img width="520" height="989" alt="4" src="https://github.com/user-attachments/assets/a14c3597-f77d-43cc-a839-d65ff7d2ad42" />
-<img width="1492" height="1025" alt="3" src="https://github.com/user-attachments/assets/3ce894dc-e9cc-4da2-a9a0-45c2176110f8" />
-<img width="1309" height="1029" alt="2" src="https://github.com/user-attachments/assets/e09d7c4d-961b-4115-bab1-8845f1027f42" />
 <img width="1279" height="1026" alt="1" src="https://github.com/user-attachments/assets/799e8258-ab38-422f-bd41-7bd5cd0a10b4" />
+<img width="1309" height="1029" alt="2" src="https://github.com/user-attachments/assets/e09d7c4d-961b-4115-bab1-8845f1027f42" />
+<img width="1492" height="1025" alt="3" src="https://github.com/user-attachments/assets/3ce894dc-e9cc-4da2-a9a0-45c2176110f8" />
+<img width="520" height="989" alt="4" src="https://github.com/user-attachments/assets/a14c3597-f77d-43cc-a839-d65ff7d2ad42" />
+<img width="546" height="1009" alt="5" src="https://github.com/user-attachments/assets/93ecb3d9-eee1-4894-ab46-79d503619b24" />
 
 
 ## O que dá para fazer
