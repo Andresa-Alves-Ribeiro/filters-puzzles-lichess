@@ -129,6 +129,25 @@ export function saveList(items: PuzzleItem[], info: string): boolean {
   return writeJson(LISTA_KEY, { v: 2, items, info })
 }
 
+const MOVES_RANGE_KEY = 'pl_lances_faixa'
+const MOVES_MAX = 10
+
+function clampMove(value: unknown, fallback: number): number {
+  const parsed = typeof value === 'string' ? Number(value) : Number.NaN
+  if (!Number.isFinite(parsed)) return fallback
+  return Math.min(MOVES_MAX, Math.max(1, Math.round(parsed)))
+}
+
+function movesRange(stored: Partial<FilterPrefs> | null): { minMoves: string; maxMoves: string } {
+  let min = clampMove(stored?.minMoves, 1)
+  let max = clampMove(stored?.maxMoves, MOVES_MAX)
+  if (min > max) [min, max] = [max, min]
+  const seen = localStorage.getItem(MOVES_RANGE_KEY) === '1'
+  if (!seen && min === 1 && max === 1) max = MOVES_MAX
+  if (!seen) localStorage.setItem(MOVES_RANGE_KEY, '1')
+  return { minMoves: String(min), maxMoves: String(max) }
+}
+
 function text(value: unknown, fallback: string): string {
   return typeof value === 'string' ? value : fallback
 }
@@ -140,13 +159,17 @@ function sortKey(value: unknown): SortKey {
 
 export function loadFilters(): FilterPrefs {
   const stored = readJson<Partial<FilterPrefs>>(FILTERS_KEY)
-  if (!stored) return { ...DEFAULT_FILTERS, themes: [...DEFAULT_FILTERS.themes] }
+  if (!stored) {
+    localStorage.setItem(MOVES_RANGE_KEY, '1')
+    return { ...DEFAULT_FILTERS, themes: [...DEFAULT_FILTERS.themes] }
+  }
+  const moves = movesRange(stored)
   return {
     themes: Array.isArray(stored.themes) ? stored.themes.filter((theme) => typeof theme === 'string') : [...DEFAULT_FILTERS.themes],
     extra: text(stored.extra, DEFAULT_FILTERS.extra),
     mode: stored.mode === 'any' ? 'any' : 'all',
-    minMoves: text(stored.minMoves, DEFAULT_FILTERS.minMoves),
-    maxMoves: text(stored.maxMoves, DEFAULT_FILTERS.maxMoves),
+    minMoves: moves.minMoves,
+    maxMoves: moves.maxMoves,
     minRating: text(stored.minRating, DEFAULT_FILTERS.minRating),
     maxRating: text(stored.maxRating, DEFAULT_FILTERS.maxRating),
     minPop: text(stored.minPop, DEFAULT_FILTERS.minPop),

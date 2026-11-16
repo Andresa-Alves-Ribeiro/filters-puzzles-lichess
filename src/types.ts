@@ -75,7 +75,7 @@ export const DEFAULT_FILTERS: FilterPrefs = {
   extra: '',
   mode: 'all',
   minMoves: '1',
-  maxMoves: '1',
+  maxMoves: '10',
   minRating: '0',
   maxRating: '4000',
   minPop: '-100',
