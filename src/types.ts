@@ -1,8 +1,12 @@
+export type SortKey = 'rating' | 'pop' | 'id' | 'moves' | 'plays'
+
 export type PuzzleItem = {
   i: string
   r: number
   fen?: string
   pop?: number
+  moves?: number
+  plays?: number
 }
 
 export type ThemeMode = 'all' | 'any'
@@ -23,6 +27,7 @@ export type FilterPrefs = {
   maxPop: string
   limit: string
   random: boolean
+  sort: SortKey
   order: 1 | -1
   skipDone: boolean
 }
@@ -46,6 +51,7 @@ export type FilterOptions = {
   maxPop: number
   limit: number
   random: boolean
+  sort: SortKey
   order: 1 | -1
   skipDone: boolean
   done: Set<string>
@@ -76,6 +82,7 @@ export const DEFAULT_FILTERS: FilterPrefs = {
   maxPop: '100',
   limit: '500',
   random: true,
+  sort: 'rating',
   order: 1,
   skipDone: true,
 }

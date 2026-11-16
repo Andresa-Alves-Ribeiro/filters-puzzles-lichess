@@ -3,6 +3,7 @@ import {
   type DailyProgress,
   type FilterPrefs,
   type PuzzleItem,
+  type SortKey,
   type ThemeChoice,
 } from './types.ts'
 
@@ -99,6 +100,8 @@ function asItem(value: unknown): PuzzleItem | null {
     r: item.r,
     fen: typeof item.fen === 'string' ? item.fen : undefined,
     pop: typeof item.pop === 'number' ? item.pop : undefined,
+    moves: typeof item.moves === 'number' ? item.moves : undefined,
+    plays: typeof item.plays === 'number' ? item.plays : undefined,
   }
 }
 
@@ -130,6 +133,11 @@ function text(value: unknown, fallback: string): string {
   return typeof value === 'string' ? value : fallback
 }
 
+function sortKey(value: unknown): SortKey {
+  if (value === 'pop' || value === 'id' || value === 'moves' || value === 'plays' || value === 'rating') return value
+  return DEFAULT_FILTERS.sort
+}
+
 export function loadFilters(): FilterPrefs {
   const stored = readJson<Partial<FilterPrefs>>(FILTERS_KEY)
   if (!stored) return { ...DEFAULT_FILTERS, themes: [...DEFAULT_FILTERS.themes] }
@@ -145,6 +153,7 @@ export function loadFilters(): FilterPrefs {
     maxPop: text(stored.maxPop, DEFAULT_FILTERS.maxPop),
     limit: text(stored.limit, DEFAULT_FILTERS.limit),
     random: typeof stored.random === 'boolean' ? stored.random : DEFAULT_FILTERS.random,
+    sort: sortKey(stored.sort),
     order: stored.order === -1 ? -1 : 1,
     skipDone: typeof stored.skipDone === 'boolean' ? stored.skipDone : DEFAULT_FILTERS.skipDone,
   }

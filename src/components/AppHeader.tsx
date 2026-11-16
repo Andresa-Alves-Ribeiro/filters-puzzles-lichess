@@ -1,4 +1,5 @@
 import type { DailyProgress, ThemeChoice } from '../types.ts'
+import { PieceGlyph } from './pieceGlyphs.tsx'
 
 type AppHeaderProps = {
   goalToday: number
@@ -17,7 +18,11 @@ export function AppHeader({ goalToday, goalPct, daily, theme, onGoal, onTheme }:
     <header className="top">
       <div className="brand">
         <h1>
-          <span className="eyebrow">Treino</span>
+          <span className="eyebrow" aria-hidden="true">
+            <svg viewBox="0 0 45 45">
+              <PieceGlyph kind="k" white fill="var(--gold)" stroke="#1a120c" />
+            </svg>
+          </span>
           Filtro de puzzles
         </h1>
         <p className="s">Monte uma lista a partir do CSV do Lichess e marque os puzzles que já fez.</p>

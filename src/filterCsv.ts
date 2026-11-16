@@ -1,4 +1,5 @@
 import type { FilterOptions, FilterProgress, FilterResult, PuzzleItem } from './types.ts'
+import { sortItems } from './sortItems.ts'
 
 export function isCompressed(name: string): boolean {
   return /\.zst$/i.test(name)
@@ -54,7 +55,15 @@ export async function filterCsv(
     }
     if (options.skipDone && options.done.has(p[0])) return
     cnt++
-    const o = { i: p[0], r, fen: p[1], pop }
+    const plays = +p[6]
+    const o = {
+      i: p[0],
+      r,
+      fen: p[1],
+      pop,
+      moves: n,
+      plays: Number.isFinite(plays) ? plays : undefined,
+    }
     if (res.length < lim) res.push(o)
     else if (options.random) {
       const j = Math.floor(Math.random() * cnt)
@@ -81,6 +90,5 @@ export async function filterCsv(
   }
   buf += dec.decode()
   if (buf) line(buf.replace(/\r$/, ''))
-  res.sort((a, b) => (a.r - b.r) * options.order)
-  return { items: res, rows, matches: cnt }
+  return { items: sortItems(res, options.sort, options.order), rows, matches: cnt }
 }

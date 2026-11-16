@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { describeFilter, filterCsv, isCompressed } from '../filterCsv.ts'
-import type { FilterPrefs, FilterResult, PuzzleItem } from '../types.ts'
+import { DEFAULT_FILTERS, type FilterPrefs, type FilterResult, type PuzzleItem } from '../types.ts'
+import { DualRange } from './DualRange.tsx'
 import { ThemePicker } from './ThemePicker.tsx'
 
 type FilterPanelProps = {
@@ -47,6 +48,21 @@ export function FilterPanel({ done, startOpen, filters, onChange, onApply }: Fil
     onChange({ themes })
   }
 
+  function clearFilters() {
+    onChange({
+      themes: [...DEFAULT_FILTERS.themes],
+      extra: DEFAULT_FILTERS.extra,
+      mode: DEFAULT_FILTERS.mode,
+      minMoves: DEFAULT_FILTERS.minMoves,
+      maxMoves: DEFAULT_FILTERS.maxMoves,
+      minRating: DEFAULT_FILTERS.minRating,
+      maxRating: DEFAULT_FILTERS.maxRating,
+      minPop: DEFAULT_FILTERS.minPop,
+      maxPop: DEFAULT_FILTERS.maxPop,
+    })
+    setStatus('')
+  }
+
   function onFile(next: File | null) {
     if (next && isCompressed(next.name)) {
       setStatus('Este arquivo ainda está compactado (.zst). Descompacte antes para obter o .csv.')
@@ -86,6 +102,7 @@ export function FilterPanel({ done, startOpen, filters, onChange, onApply }: Fil
           limit: lim,
           random: filters.random,
           order: filters.order,
+          sort: filters.sort,
           skipDone: filters.skipDone,
           done,
         },
@@ -116,7 +133,9 @@ export function FilterPanel({ done, startOpen, filters, onChange, onApply }: Fil
 
   return (
     <details className="card filters" ref={rememberDetails}>
-      <summary>Filtros</summary>
+      <summary>
+        <span className="summary-title">Filtros</span>
+      </summary>
       <h2 className="only-desk">Filtros</h2>
 
       <h2>1. Arquivo CSV</h2>
@@ -152,69 +171,51 @@ export function FilterPanel({ done, startOpen, filters, onChange, onApply }: Fil
       </div>
 
       <h2 className="sp">3. Lances, rating e popularidade</h2>
-      <div className="row">
-        <div>
-          <span>Lances mín.</span>
-          <input
-            type="number"
-            min={1}
-            value={filters.minMoves}
-            onChange={(event) => onChange({ minMoves: event.target.value })}
-          />
-        </div>
-        <div>
-          <span>Lances máx.</span>
-          <input
-            type="number"
-            min={1}
-            value={filters.maxMoves}
-            onChange={(event) => onChange({ maxMoves: event.target.value })}
-          />
-        </div>
-        <div>
-          <span>Rating mín.</span>
-          <input
-            type="number"
-            value={filters.minRating}
-            onChange={(event) => onChange({ minRating: event.target.value })}
-          />
-        </div>
-        <div>
-          <span>Rating máx.</span>
-          <input
-            type="number"
-            value={filters.maxRating}
-            onChange={(event) => onChange({ maxRating: event.target.value })}
-          />
-        </div>
-        <div>
-          <span>Popularidade mín.</span>
-          <input
-            type="number"
-            min={-100}
-            max={100}
-            value={filters.minPop}
-            onChange={(event) => onChange({ minPop: event.target.value })}
-          />
-        </div>
-        <div>
-          <span>Popularidade máx.</span>
-          <input
-            type="number"
-            min={-100}
-            max={100}
-            value={filters.maxPop}
-            onChange={(event) => onChange({ maxPop: event.target.value })}
-          />
-        </div>
-      </div>
+      <DualRange
+        label="Lances"
+        minLabel="Lances mínimos"
+        maxLabel="Lances máximos"
+        min={filters.minMoves}
+        max={filters.maxMoves}
+        floor={1}
+        ceil={20}
+        step={1}
+        onChange={(minMoves, maxMoves) => onChange({ minMoves, maxMoves })}
+      />
+      <DualRange
+        label="Rating"
+        minLabel="Rating mínimo"
+        maxLabel="Rating máximo"
+        min={filters.minRating}
+        max={filters.maxRating}
+        floor={0}
+        ceil={4000}
+        step={50}
+        onChange={(minRating, maxRating) => onChange({ minRating, maxRating })}
+      />
+      <DualRange
+        label="Popularidade"
+        minLabel="Popularidade mínima"
+        maxLabel="Popularidade máxima"
+        min={filters.minPop}
+        max={filters.maxPop}
+        floor={-100}
+        ceil={100}
+        step={5}
+        onChange={(minPop, maxPop) => onChange({ minPop, maxPop })}
+      />
       <p className="m">
         Lances = lances do jogador, sem a jogada inicial do adversário. Popularidade vai de -100 a 100.
       </p>
 
-      <button type="button" className="primary" disabled={!file || filtering} onClick={() => void onFilter()}>
-        {filtering ? 'Filtrando…' : 'Filtrar'}
-      </button>
+      <div className="filter-actions">
+        <button type="button" className="ghost" onClick={clearFilters}>
+          Limpar filtros
+        </button>
+        <button type="button" className="primary" disabled={!file || filtering} onClick={() => void onFilter()}>
+          {filtering ? 'Filtrando…' : 'Filtrar'}
+        </button>
+      </div>
       <progress className={showProgress ? undefined : 'hide'} value={progress} max={progressMax} />
       <div className="m" role="status">
         {status}

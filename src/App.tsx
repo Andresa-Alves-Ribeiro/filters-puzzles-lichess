@@ -15,7 +15,8 @@ import {
   saveTheme,
   todayKey,
 } from './storage.ts'
-import type { DailyProgress, FilterPrefs, PuzzleItem, ThemeChoice } from './types.ts'
+import { sortItems } from './sortItems.ts'
+import type { DailyProgress, FilterPrefs, PuzzleItem, SortKey, ThemeChoice } from './types.ts'
 
 const FilterPanel = lazy(() =>
   import('./components/FilterPanel.tsx').then((module) => ({ default: module.FilterPanel })),
@@ -88,9 +89,11 @@ export default function App() {
     setDaily((prev) => advanceDaily(prev, prev.date === todayKey() ? prev.ids : [], next))
   }
 
-  function changeOrder(next: 1 | -1) {
-    patchFilters({ order: next })
-    const sorted = [...items].sort((a, b) => (a.r - b.r) * next)
+  function changeSort(patch: { sort?: SortKey; order?: 1 | -1 }) {
+    const sort = patch.sort ?? filters.sort
+    const order = patch.order ?? filters.order
+    patchFilters({ sort, order })
+    const sorted = sortItems(items, sort, order)
     setItems(sorted)
     if (sorted.length && !saveList(sorted, info)) setSync('Não consegui salvar a lista.')
   }
@@ -136,7 +139,7 @@ export default function App() {
             listVersion={listVersion}
             filters={filters}
             onFilters={patchFilters}
-            onOrder={changeOrder}
+            onSort={changeSort}
             onToggle={toggleDone}
             onClear={clearDone}
           />
