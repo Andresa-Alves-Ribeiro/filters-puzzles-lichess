@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { describeFilter, filterCsv, isCompressed } from '../filterCsv.ts'
 import { DEFAULT_FILTERS, type FilterPrefs, type FilterResult, type PuzzleItem } from '../types.ts'
+import { keepCsv, loadKeptCsv } from '../csvStore.ts'
 import { DualRange } from './DualRange.tsx'
 import { ThemePicker } from './ThemePicker.tsx'
 
@@ -20,6 +21,10 @@ export function FilterPanel({ done, startOpen, filters, onChange, onApply }: Fil
   const [progressMax, setProgressMax] = useState(1)
   const [status, setStatus] = useState('')
   const detailsRef = useRef<HTMLDetailsElement>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+  const picked = useRef(false)
+  const keepGen = useRef(0)
+  const filteringRef = useRef(false)
   const selected = useMemo(() => new Set(filters.themes), [filters.themes])
 
   useEffect(() => {
@@ -30,6 +35,19 @@ export function FilterPanel({ done, startOpen, filters, onChange, onApply }: Fil
     sync()
     media.addEventListener('change', sync)
     return () => media.removeEventListener('change', sync)
+  }, [])
+
+  useEffect(() => {
+    let cancel = false
+    void loadKeptCsv().then((kept) => {
+      if (cancel || picked.current || !kept) return
+      setFile(kept)
+      showOnInput(fileRef.current, kept)
+      setStatus(`${fileLabel(kept)}, salvo neste navegador.`)
+    })
+    return () => {
+      cancel = true
+    }
   }, [])
 
   function rememberDetails(node: HTMLDetailsElement | null) {
@@ -64,13 +82,27 @@ export function FilterPanel({ done, startOpen, filters, onChange, onApply }: Fil
   }
 
   function onFile(next: File | null) {
+    picked.current = true
     if (next && isCompressed(next.name)) {
       setStatus('Este arquivo ainda está compactado (.zst). Descompacte antes para obter o .csv.')
       setFile(null)
       return
     }
     setFile(next)
-    setStatus(next ? `${next.name} (${(next.size / 1048576).toFixed(0)} MB)` : '')
+    if (!next) return
+    const label = fileLabel(next)
+    setStatus(label)
+    const gen = ++keepGen.current
+    void keepCsv(next).then(
+      () => {
+        if (keepGen.current !== gen || filteringRef.current) return
+        setStatus(`${label}, salvo neste navegador.`)
+      },
+      () => {
+        if (keepGen.current !== gen || filteringRef.current) return
+        setStatus(`${label}. Não consegui guardar para a próxima visita.`)
+      },
+    )
   }
 
   async function onFilter() {
@@ -84,6 +116,7 @@ export function FilterPanel({ done, startOpen, filters, onChange, onApply }: Fil
     const pmax = +filters.maxPop
     const lim = +filters.limit || 500
     setFiltering(true)
+    filteringRef.current = true
     setShowProgress(true)
     setProgress(0)
     setProgressMax(file.size)
@@ -127,6 +160,7 @@ export function FilterPanel({ done, startOpen, filters, onChange, onApply }: Fil
       const message = error instanceof Error ? error.message : String(error)
       setStatus(`Erro ao ler o arquivo: ${message}`)
     } finally {
+      filteringRef.current = false
       setFiltering(false)
     }
   }
@@ -140,6 +174,7 @@ export function FilterPanel({ done, startOpen, filters, onChange, onApply }: Fil
 
       <h2>1. Arquivo CSV</h2>
       <input
+        ref={fileRef}
         className="file"
         type="file"
         accept=".csv,text/csv"
@@ -223,4 +258,19 @@ export function FilterPanel({ done, startOpen, filters, onChange, onApply }: Fil
       <p className="m">Uma nova lista substitui a anterior. Os puzzles feitos continuam marcados.</p>
     </details>
   )
+}
+
+function fileLabel(file: File) {
+  return `${file.name} (${(file.size / 1048576).toFixed(0)} MB)`
+}
+
+function showOnInput(input: HTMLInputElement | null, file: File) {
+  if (!input) return
+  try {
+    const transfer = new DataTransfer()
+    transfer.items.add(file)
+    input.files = transfer.files
+  } catch {
+    /* o arquivo continua disponível para filtrar */
+  }
 }

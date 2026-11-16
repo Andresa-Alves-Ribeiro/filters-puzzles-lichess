@@ -33,9 +33,6 @@ export function PuzzleList({
   onClear,
 }: PuzzleListProps) {
   const [view, setView] = useState<ViewMode>('all')
-  const [query, setQuery] = useState('')
-  const [ratingMin, setRatingMin] = useState<number | null>(null)
-  const [ratingMax, setRatingMax] = useState<number | null>(null)
   const [flipped, setFlipped] = useState(false)
   const [frozenDone, setFrozenDone] = useState(() => new Set(done))
   const [copied, setCopied] = useState(false)
@@ -53,11 +50,9 @@ export function PuzzleList({
     if (seenVersion.current === listVersion) return
     seenVersion.current = listVersion
     setView('all')
-    setQuery('')
-    setRatingMin(null)
-    setRatingMax(null)
+    onFilters({ listQuery: '', listRatingMin: '', listRatingMax: '' })
     setFrozenDone(new Set(doneRef.current))
-  }, [listVersion])
+  }, [listVersion, onFilters])
 
   useEffect(() => {
     const media = window.matchMedia('(min-width: 960px)')
@@ -78,6 +73,9 @@ export function PuzzleList({
   }
 
   const ratingBounds = useMemo(() => ratingWindow(items), [items])
+  const query = filters.listQuery
+  const ratingMin = numberOrNull(filters.listRatingMin)
+  const ratingMax = numberOrNull(filters.listRatingMax)
   const ratingLo = ratingMin ?? ratingBounds.floor
   const ratingHi = ratingMax ?? ratingBounds.ceil
   const doneCount = items.filter((item) => done.has(item.i)).length
@@ -247,7 +245,7 @@ export function PuzzleList({
               value={query}
               placeholder="Id do puzzle"
               aria-label="Filtrar por id"
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => onFilters({ listQuery: event.target.value })}
             />
           </div>
           <div>
@@ -268,10 +266,7 @@ export function PuzzleList({
           floor={ratingBounds.floor}
           ceil={ratingBounds.ceil}
           step={ratingBounds.step}
-          onChange={(min, max) => {
-            setRatingMin(Number(min))
-            setRatingMax(Number(max))
-          }}
+          onChange={(min, max) => onFilters({ listRatingMin: min, listRatingMax: max })}
         />
       )}
       {items.length > 0 && (
@@ -380,6 +375,12 @@ export function PuzzleList({
       <p className="m">{sync}</p>
     </details>
   )
+}
+
+function numberOrNull(value: string): number | null {
+  if (value.trim() === '') return null
+  const number = Number(value)
+  return Number.isFinite(number) ? number : null
 }
 
 function ratingWindow(items: PuzzleItem[]) {
