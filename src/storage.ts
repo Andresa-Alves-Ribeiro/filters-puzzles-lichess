@@ -156,9 +156,6 @@ export function loadFilters(): FilterPrefs {
     sort: sortKey(stored.sort),
     order: stored.order === -1 ? -1 : 1,
     skipDone: typeof stored.skipDone === 'boolean' ? stored.skipDone : DEFAULT_FILTERS.skipDone,
-    listQuery: text(stored.listQuery, DEFAULT_FILTERS.listQuery),
-    listRatingMin: text(stored.listRatingMin, DEFAULT_FILTERS.listRatingMin),
-    listRatingMax: text(stored.listRatingMax, DEFAULT_FILTERS.listRatingMax),
   }
 }
 
