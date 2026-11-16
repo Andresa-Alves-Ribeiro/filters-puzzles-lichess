@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { TRAINING_URL } from '../themes.ts'
 import { ratingTone } from '../ratingTone.ts'
 import type { FilterPrefs, PuzzleItem, SortKey, ViewMode } from '../types.ts'
-import { DualRange } from './DualRange.tsx'
 import { MiniBoard } from './MiniBoard.tsx'
 import { PieceGlyph } from './pieceGlyphs.tsx'
 
@@ -50,9 +49,8 @@ export function PuzzleList({
     if (seenVersion.current === listVersion) return
     seenVersion.current = listVersion
     setView('all')
-    onFilters({ listQuery: '', listRatingMin: '', listRatingMax: '' })
     setFrozenDone(new Set(doneRef.current))
-  }, [listVersion, onFilters])
+  }, [listVersion])
 
   useEffect(() => {
     const media = window.matchMedia('(min-width: 960px)')
@@ -72,19 +70,10 @@ export function PuzzleList({
     }
   }
 
-  const ratingBounds = useMemo(() => ratingWindow(items), [items])
-  const query = filters.listQuery
-  const ratingMin = numberOrNull(filters.listRatingMin)
-  const ratingMax = numberOrNull(filters.listRatingMax)
-  const ratingLo = ratingMin ?? ratingBounds.floor
-  const ratingHi = ratingMax ?? ratingBounds.ceil
   const doneCount = items.filter((item) => done.has(item.i)).length
-  const needle = query.trim().toLowerCase()
   const visible = items
     .map((item, index) => ({ x: item, k: index }))
     .filter((entry) => view !== 'pend' || !frozenDone.has(entry.x.i))
-    .filter((entry) => !needle || entry.x.i.toLowerCase().includes(needle))
-    .filter((entry) => entry.x.r >= ratingLo && entry.x.r <= ratingHi)
   const complete = items.length > 0 && doneCount === items.length
   const progress = items.length ? Math.round((doneCount / items.length) * 100) : 0
 
@@ -238,16 +227,6 @@ export function PuzzleList({
 
       {items.length > 0 && (
         <div className="row tools">
-          <div className="grow">
-            <span>Id</span>
-            <input
-              type="search"
-              value={query}
-              placeholder="Id do puzzle"
-              aria-label="Filtrar por id"
-              onChange={(event) => onFilters({ listQuery: event.target.value })}
-            />
-          </div>
           <div>
             <span>Tabuleiro</span>
             <button type="button" className="ghost" onClick={() => setFlipped((value) => !value)}>
@@ -255,19 +234,6 @@ export function PuzzleList({
             </button>
           </div>
         </div>
-      )}
-      {items.length > 0 && (
-        <DualRange
-          label="Rating da lista"
-          minLabel="Rating mínimo da lista"
-          maxLabel="Rating máximo da lista"
-          min={String(ratingLo)}
-          max={String(ratingHi)}
-          floor={ratingBounds.floor}
-          ceil={ratingBounds.ceil}
-          step={ratingBounds.step}
-          onChange={(min, max) => onFilters({ listRatingMin: min, listRatingMax: max })}
-        />
       )}
       {items.length > 0 && (
         <p className="m">A miniatura é a posição do CSV, antes do lance inicial do adversário.</p>
@@ -375,21 +341,4 @@ export function PuzzleList({
       <p className="m">{sync}</p>
     </details>
   )
-}
-
-function numberOrNull(value: string): number | null {
-  if (value.trim() === '') return null
-  const number = Number(value)
-  return Number.isFinite(number) ? number : null
-}
-
-function ratingWindow(items: PuzzleItem[]) {
-  let low = items[0]?.r ?? 0
-  let high = low
-  for (const item of items) {
-    if (item.r < low) low = item.r
-    if (item.r > high) high = item.r
-  }
-  if (high - low < 50) return { floor: low, ceil: high, step: high === low ? 1 : 10 }
-  return { floor: Math.floor(low / 50) * 50, ceil: Math.ceil(high / 50) * 50, step: 50 }
 }

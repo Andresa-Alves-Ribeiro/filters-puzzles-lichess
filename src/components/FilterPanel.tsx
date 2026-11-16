@@ -109,7 +109,7 @@ export function FilterPanel({ done, startOpen, filters, onChange, onApply }: Fil
     if (!file || filtering) return
     const themes = [...filters.themes, ...filters.extra.trim().split(/\s+/).filter(Boolean)]
     const mn = +filters.minMoves || 1
-    const mx = +filters.maxMoves || 999
+    const mx = Math.min(10, +filters.maxMoves || 10)
     const rmin = +filters.minRating
     const rmax = +filters.maxRating
     const pmin = +filters.minPop
@@ -213,7 +213,7 @@ export function FilterPanel({ done, startOpen, filters, onChange, onApply }: Fil
         min={filters.minMoves}
         max={filters.maxMoves}
         floor={1}
-        ceil={20}
+        ceil={10}
         step={1}
         onChange={(minMoves, maxMoves) => onChange({ minMoves, maxMoves })}
       />

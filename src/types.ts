@@ -30,9 +30,6 @@ export type FilterPrefs = {
   sort: SortKey
   order: 1 | -1
   skipDone: boolean
-  listQuery: string
-  listRatingMin: string
-  listRatingMax: string
 }
 
 export type DailyProgress = {
@@ -78,7 +75,7 @@ export const DEFAULT_FILTERS: FilterPrefs = {
   extra: '',
   mode: 'all',
   minMoves: '1',
-  maxMoves: '1',
+  maxMoves: '10',
   minRating: '0',
   maxRating: '4000',
   minPop: '-100',
@@ -88,7 +85,4 @@ export const DEFAULT_FILTERS: FilterPrefs = {
   sort: 'rating',
   order: 1,
   skipDone: true,
-  listQuery: '',
-  listRatingMin: '',
-  listRatingMax: '',
 }
