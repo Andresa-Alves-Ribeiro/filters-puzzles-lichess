@@ -1,6 +1,6 @@
 # Filtro de puzzles do Lichess
 
-Aplicação para montar uma lista de treino a partir do banco de puzzles do [Lichess](https://lichess.org). O arquivo CSV fica no seu computador. O filtro roda no navegador, sem conta e sem backend: a [Vercel](https://vercel.com) só publica os arquivos estáticos. A lista, os filtros, os puzzles já feitos e a meta do dia ficam gravados só neste navegador.
+Aplicação para montar uma lista de treino a partir do banco de puzzles do [Lichess](https://lichess.org). O arquivo CSV fica no seu computador. O filtro roda no navegador, sem conta e sem backend. A lista, os filtros, os puzzles já feitos e a meta do dia ficam gravados só no seu navegador.
 
 Versão publicada: [filters-puzzles-lichess.vercel.app](https://filters-puzzles-lichess.vercel.app/)
 
@@ -8,16 +8,12 @@ Cada puzzle da lista abre em `https://lichess.org/training/{id}`.
 
 ## Capturas
 
-As imagens ficam na pasta `docs/`. Salve cada arquivo com o nome indicado. O README já aponta para eles. Formatos que o GitHub mostra: PNG, JPG ou WebP.
+<img width="546" height="1009" alt="5" src="https://github.com/user-attachments/assets/93ecb3d9-eee1-4894-ab46-79d503619b24" />
+<img width="520" height="989" alt="4" src="https://github.com/user-attachments/assets/a14c3597-f77d-43cc-a839-d65ff7d2ad42" />
+<img width="1492" height="1025" alt="3" src="https://github.com/user-attachments/assets/3ce894dc-e9cc-4da2-a9a0-45c2176110f8" />
+<img width="1309" height="1029" alt="2" src="https://github.com/user-attachments/assets/e09d7c4d-961b-4115-bab1-8845f1027f42" />
+<img width="1279" height="1026" alt="1" src="https://github.com/user-attachments/assets/799e8258-ab38-422f-bd41-7bd5cd0a10b4" />
 
-| | |
-| --- | --- |
-| ![Tela principal no desktop, tema escuro](docs/tela-principal.png) | ![Tela principal no desktop, tema claro](docs/tela-clara.png) |
-| Tela principal, tema escuro | Tela principal, tema claro |
-| ![Card de filtros, com temas e faixas](docs/filtros.png) | ![Lista de puzzles, com miniatura e rating](docs/lista.png) |
-| Filtros | Lista |
-| ![Layout no celular, com os dois cards](docs/mobile.png) | ![Cards recolhidos no celular](docs/mobile-recolhido.png) |
-| Celular | Celular, cards recolhidos |
 
 ## O que dá para fazer
 
