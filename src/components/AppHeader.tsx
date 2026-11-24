@@ -8,23 +8,58 @@ type AppHeaderProps = {
   theme: ThemeChoice
   onGoal: (goal: number) => void
   onTheme: (theme: ThemeChoice) => void
+  compact?: boolean
+  hidden?: boolean
+  listDone?: number
+  listTotal?: number
 }
 
-export function AppHeader({ goalToday, goalPct, daily, theme, onGoal, onTheme }: AppHeaderProps) {
+export function AppHeader({
+  goalToday,
+  goalPct,
+  daily,
+  theme,
+  onGoal,
+  onTheme,
+  compact = false,
+  hidden = false,
+  listDone = 0,
+  listTotal = 0,
+}: AppHeaderProps) {
   const met = goalToday >= daily.goal
   const streakLabel = `Sequência de ${daily.streak} ${daily.streak === 1 ? 'dia' : 'dias'}`
+  const title = (
+    <h1>
+      <span className="eyebrow" aria-hidden="true">
+        <svg viewBox="0 0 45 45">
+          <PieceGlyph kind="k" white fill="var(--gold)" stroke="#1a120c" />
+        </svg>
+      </span>
+      {compact ? 'Puzzles' : 'Filtro de puzzles'}
+    </h1>
+  )
+  const headerClass = ['top', compact ? 'top-compact' : '', hidden ? 'is-hidden' : ''].filter(Boolean).join(' ')
 
   return (
-    <header className="top">
+    <header className={headerClass}>
       <div className="brand">
-        <h1>
-          <span className="eyebrow" aria-hidden="true">
-            <svg viewBox="0 0 45 45">
-              <PieceGlyph kind="k" white fill="var(--gold)" stroke="#1a120c" />
-            </svg>
-          </span>
-          Filtro de puzzles
-        </h1>
+        {compact ? (
+          <div className="brand-line">
+            {title}
+            {listTotal > 0 && (
+              <strong className="score">
+                <span aria-hidden="true">
+                  {listDone}/{listTotal}
+                </span>
+                <span className="visually-hidden">
+                  {listDone} de {listTotal} feitos
+                </span>
+              </strong>
+            )}
+          </div>
+        ) : (
+          title
+        )}
         <p className="s">Monte uma lista a partir do CSV do Lichess e marque os puzzles que já fez.</p>
       </div>
       <div className="top-side">
@@ -68,41 +103,35 @@ export function AppHeader({ goalToday, goalPct, daily, theme, onGoal, onTheme }:
           </div>
           {met && <p className="goal-note">Meta cumprida.</p>}
         </section>
-        <div className="themeswitch" role="group" aria-label="Aparência">
+        <div className="themeswitch">
           <button
             type="button"
             className="ghost"
-            aria-pressed={theme === 'light'}
-            aria-label="Claro"
-            onClick={() => onTheme('light')}
+            aria-label={theme === 'dark' ? 'Tema escuro, alternar para claro' : 'Tema claro, alternar para escuro'}
+            onClick={() => onTheme(theme === 'dark' ? 'light' : 'dark')}
           >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" strokeWidth="2" />
-              <path
-                d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-            </svg>
-          </button>
-          <button
-            type="button"
-            className="ghost"
-            aria-pressed={theme === 'dark'}
-            aria-label="Escuro"
-            onClick={() => onTheme('dark')}
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M21 14.5A8.5 8.5 0 1 1 9.5 3a7 7 0 0 0 11.5 11.5z"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinejoin="round"
-              />
-            </svg>
+            {theme === 'dark' ? (
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M21 14.5A8.5 8.5 0 1 1 9.5 3a7 7 0 0 0 11.5 11.5z"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" strokeWidth="2" />
+                <path
+                  d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
+            )}
           </button>
         </div>
       </div>

@@ -53,6 +53,7 @@ export function ThemePicker({ selected, onToggle }: ThemePickerProps) {
           type="text"
           value={query}
           role="combobox"
+          aria-label="Buscar tema"
           aria-expanded={open}
           aria-controls={listId}
           aria-autocomplete="list"
@@ -63,7 +64,11 @@ export function ThemePicker({ selected, onToggle }: ThemePickerProps) {
             setOpen(true)
           }}
           onKeyDown={(event) => {
-            if (event.key === 'Escape') setOpen(false)
+            if (event.key === 'Escape') {
+              if (!open) return
+              event.stopPropagation()
+              setOpen(false)
+            }
             if (event.key === 'Backspace' && !query) {
               const last = [...selected].at(-1)
               if (last) onToggle(last)

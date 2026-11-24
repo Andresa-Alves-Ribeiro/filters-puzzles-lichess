@@ -1,43 +1,97 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useImperativeHandle, useRef, useState, type MouseEvent, type Ref } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { TRAINING_URL } from '../themes.ts'
 import { ratingTone } from '../ratingTone.ts'
+import { themeLabel, TRAINING_URL } from '../themes.ts'
 import type { FilterPrefs, PuzzleItem, SortKey, ViewMode } from '../types.ts'
+import { FlipControl, ListActions, ListSettings } from './ListSettings.tsx'
 import { MiniBoard } from './MiniBoard.tsx'
 import { PieceGlyph } from './pieceGlyphs.tsx'
 
+function listFacts(info: string): string[] {
+  if (!info) return []
+  const pop = info.match(/, popularidade (-?\d+)–(-?\d+)$/)
+  const withoutPop = pop ? info.slice(0, pop.index) : info
+  const rating = withoutPop.match(/, rating (\d+)–(\d+)$/)
+  const withoutRating = rating ? withoutPop.slice(0, rating.index) : withoutPop
+  const moves = withoutRating.match(/, (\d+)(?:–(\d+))? lances?$/)
+  const themes = moves && moves.index !== undefined ? withoutRating.slice(0, moves.index) : withoutRating
+  if (!moves || !rating) return [info]
+  const minMoves = moves[1] ?? ''
+  const maxMoves = moves[2] ?? minMoves
+  const moveLabel = minMoves === maxMoves ? minMoves : `${minMoves}–${maxMoves}`
+  const moveWord = maxMoves === '1' ? 'lance' : 'lances'
+  const themeLabelText =
+    themes === 'qualquer tema'
+      ? 'Qualquer tema'
+      : themes
+          .split(/\s+\+\s+|\s+ou\s+/)
+          .map((key) => themeLabel(key))
+          .join(themes.includes(' + ') ? ' + ' : themes.includes(' ou ') ? ' ou ' : '')
+  const facts = [themeLabelText, `${moveLabel} ${moveWord}`, `Rating ${rating[1]}–${rating[2]}`]
+  if (pop) facts.push(`Pop. ${pop[1]}–${pop[2]}`)
+  return facts
+}
+
+export type PuzzleListHandle = {
+  scrollToTop: () => void
+  resetPending: () => void
+}
+
 type PuzzleListProps = {
+  ref?: Ref<PuzzleListHandle>
   items: PuzzleItem[]
   info: string
   done: Set<string>
   sync: string
   listVersion: number
   filters: FilterPrefs
+  view: ViewMode
+  onView: (view: ViewMode) => void
+  mobile: boolean
+  flipped: boolean
+  copied: boolean
+  onFlip: () => void
+  onCopy: () => void
   onFilters: (patch: Partial<FilterPrefs>) => void
   onSort: (patch: { sort?: SortKey; order?: 1 | -1 }) => void
   onToggle: (id: string, checked: boolean) => void
   onClear: () => void
+  hasFile: boolean
+  onLoadCsv: () => void
+  onListScroll?: (info: { scrollTop: number; clientHeight: number; scrollHeight: number }) => void
 }
 
 export function PuzzleList({
+  ref,
   items,
   info,
   done,
   sync,
   listVersion,
   filters,
+  view,
+  onView,
+  mobile,
+  flipped,
+  copied,
+  onFlip,
+  onCopy,
   onFilters,
   onSort,
   onToggle,
   onClear,
+  hasFile,
+  onLoadCsv,
+  onListScroll,
 }: PuzzleListProps) {
-  const [view, setView] = useState<ViewMode>('all')
-  const [flipped, setFlipped] = useState(false)
   const [frozenDone, setFrozenDone] = useState(() => new Set(done))
-  const [copied, setCopied] = useState(false)
+  const [trackedView, setTrackedView] = useState(view)
   const doneRef = useRef(done)
   const seenVersion = useRef(listVersion)
-  const copyTimer = useRef<number | null>(null)
+  if (view !== trackedView) {
+    setTrackedView(view)
+    setFrozenDone(new Set(done))
+  }
   const scrollerRef = useRef<HTMLDivElement>(null)
   const detailsRef = useRef<HTMLDetailsElement>(null)
 
@@ -48,19 +102,17 @@ export function PuzzleList({
   useEffect(() => {
     if (seenVersion.current === listVersion) return
     seenVersion.current = listVersion
-    setView('all')
+    onView('all')
     setFrozenDone(new Set(doneRef.current))
-  }, [listVersion])
+  }, [listVersion, onView])
 
   useEffect(() => {
-    const media = window.matchMedia('(min-width: 960px)')
-    function sync() {
-      if (media.matches && detailsRef.current) detailsRef.current.open = true
-    }
-    sync()
-    media.addEventListener('change', sync)
-    return () => media.removeEventListener('change', sync)
-  }, [])
+    if (detailsRef.current) detailsRef.current.open = true
+  }, [mobile])
+
+  useEffect(() => {
+    if (items.length === 0) onListScroll?.({ scrollTop: 0, clientHeight: 1, scrollHeight: 0 })
+  }, [items.length, onListScroll])
 
   function rememberDetails(node: HTMLDetailsElement | null) {
     detailsRef.current = node
@@ -80,46 +132,45 @@ export function PuzzleList({
   const virtualizer = useVirtualizer({
     count: visible.length,
     getScrollElement: () => scrollerRef.current,
-    estimateSize: () => 136,
+    estimateSize: () => (mobile ? 88 : 136),
     overscan: 6,
   })
 
-  function changeView(next: ViewMode) {
-    setView(next)
-    setFrozenDone(new Set(done))
-  }
-
-  async function copyPending() {
-    const text = items
-      .filter((item) => !done.has(item.i))
-      .map((item) => TRAINING_URL + item.i)
-      .join('\n')
-    try {
-      await navigator.clipboard.writeText(text)
-    } catch {
-      const area = document.createElement('textarea')
-      area.value = text
-      document.body.appendChild(area)
-      area.select()
-      try {
-        document.execCommand('copy')
-      } catch {
-        /* clipboard indisponível */
-      }
-      area.remove()
+  useEffect(() => {
+    const el = scrollerRef.current
+    if (!el || !onListScroll) return
+    const node = el
+    function handle() {
+      onListScroll?.({
+        scrollTop: node.scrollTop,
+        clientHeight: node.clientHeight,
+        scrollHeight: node.scrollHeight,
+      })
     }
-    setCopied(true)
-    if (copyTimer.current) window.clearTimeout(copyTimer.current)
-    copyTimer.current = window.setTimeout(() => setCopied(false), 1800)
+    node.addEventListener('scroll', handle, { passive: true })
+    return () => node.removeEventListener('scroll', handle)
+  }, [onListScroll, visible.length])
+
+  function openPuzzle(event: MouseEvent<HTMLElement>, id: string, checked: boolean) {
+    const target = event.target
+    if (!(target instanceof Element) || target.closest('.tick')) return
+    if (!checked) onToggle(id, true)
+    if (target.closest('a')) return
+    window.open(TRAINING_URL + id, '_blank', 'noopener,noreferrer')
   }
 
-  function clearDone() {
-    setFrozenDone(new Set())
-    onClear()
-  }
+  useImperativeHandle(ref, () => ({
+    scrollToTop() {
+      const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
+      scrollerRef.current?.scrollTo({ top: 0, behavior })
+    },
+    resetPending() {
+      setFrozenDone(new Set())
+    },
+  }))
 
   return (
-    <details className="card list-card" ref={rememberDetails}>
+    <details id="lista" className="card list-card" ref={rememberDetails}>
       <summary>
         <span className="summary-title">Minha lista</span>
         {items.length > 0 && (
@@ -128,144 +179,59 @@ export function PuzzleList({
           </strong>
         )}
       </summary>
-      <div className="list-head">
-        <h2>Minha lista</h2>
-        {items.length > 0 && (
-          <strong className="score">
-            {doneCount}/{items.length}
-          </strong>
-        )}
-      </div>
-      {items.length > 0 && (
-        <p className="m flat">
-          {info} · {doneCount} de {items.length} feitos
-        </p>
-      )}
-      {items.length > 0 && (
+      {!mobile && (
         <>
-          <div
-            className="meter"
-            role="progressbar"
-            aria-valuemin={0}
-            aria-valuemax={items.length}
-            aria-valuenow={doneCount}
-            aria-label="Progresso da lista"
-          >
-            <span style={{ width: `${progress}%` }} />
+          <div className="list-head">
+            <h2>Minha lista</h2>
+            {items.length > 0 && (
+              <strong className="score">{doneCount > 0 && progress === 0 ? '<1%' : `${progress}%`}</strong>
+            )}
           </div>
-          {complete && <p className="banner">Lista concluída.</p>}
+          {items.length > 0 && (
+            <>
+              <ul className="list-facts">
+                {listFacts(info).map((fact) => (
+                  <li key={fact} className="fact">
+                    {fact}
+                  </li>
+                ))}
+              </ul>
+              <div className="list-progress">
+                <span>
+                  <strong>{doneCount}</strong> {doneCount === 1 ? 'feito' : 'feitos'}
+                </span>
+                <div
+                  className="meter"
+                  role="progressbar"
+                  aria-valuemin={0}
+                  aria-valuemax={items.length}
+                  aria-valuenow={doneCount}
+                  aria-label="Progresso da lista"
+                >
+                  <span style={{ width: doneCount > 0 ? `max(${progress}%, 6px)` : '0%' }} />
+                </div>
+                <span>
+                  <strong>{items.length}</strong> na lista
+                </span>
+              </div>
+              {complete && <p className="banner">Lista concluída.</p>}
+            </>
+          )}
+          <ListSettings
+            filters={filters}
+            view={view}
+            showView={items.length > 0}
+            onFilters={onFilters}
+            onSort={onSort}
+            onView={onView}
+          />
+          {items.length > 0 && <FlipControl flipped={flipped} onFlip={onFlip} />}
+          {items.length > 0 && (
+            <p className="hint">A miniatura é a posição do CSV, antes do lance inicial do adversário.</p>
+          )}
+          {items.length > 0 && <ListActions copied={copied} onCopy={onCopy} onClear={onClear} />}
         </>
       )}
-
-      <div className="row tools">
-        {items.length > 0 && (
-          <div>
-            <span>Mostrar</span>
-            <select value={view} onChange={(event) => changeView(event.target.value === 'pend' ? 'pend' : 'all')}>
-              <option value="all">Todos</option>
-              <option value="pend">Só pendentes</option>
-            </select>
-          </div>
-        )}
-        <div>
-          <span>Ordenar por</span>
-          <select
-            value={filters.sort}
-            onChange={(event) => {
-              const sort = event.target.value
-              if (sort === 'rating' || sort === 'pop' || sort === 'id' || sort === 'moves' || sort === 'plays') {
-                onSort({ sort })
-              }
-            }}
-          >
-            <option value="rating">Rating</option>
-            <option value="pop">Popularidade</option>
-            <option value="id">Id</option>
-            <option value="moves">Lances</option>
-            <option value="plays">Partidas</option>
-          </select>
-        </div>
-        <div>
-          <span>Ordem</span>
-          <select
-            value={String(filters.order)}
-            onChange={(event) => onSort({ order: event.target.value === '-1' ? -1 : 1 })}
-          >
-            <option value="1">Crescente</option>
-            <option value="-1">Decrescente</option>
-          </select>
-        </div>
-        <div>
-          <span>Seleção</span>
-          <select
-            value={filters.random ? '1' : '0'}
-            onChange={(event) => onFilters({ random: event.target.value === '1' })}
-          >
-            <option value="1">Aleatórios</option>
-            <option value="0">Primeiros do arquivo</option>
-          </select>
-        </div>
-        <div>
-          <span>Máx. de puzzles</span>
-          <input
-            type="number"
-            min={1}
-            max={10000}
-            value={filters.limit}
-            onChange={(event) => onFilters({ limit: event.target.value })}
-          />
-        </div>
-      </div>
-      <label className="skip">
-        <input
-          type="checkbox"
-          checked={filters.skipDone}
-          onChange={(event) => onFilters({ skipDone: event.target.checked })}
-        />{' '}
-        Pular puzzles que já marquei como feitos
-      </label>
-
-      {items.length > 0 && (
-        <div className="row tools">
-          <div>
-            <span>Tabuleiro</span>
-            <button type="button" className="ghost" onClick={() => setFlipped((value) => !value)}>
-              {flipped ? 'Pretas embaixo' : 'Brancas embaixo'}
-            </button>
-          </div>
-        </div>
-      )}
-      {items.length > 0 && (
-        <p className="m">A miniatura é a posição do CSV, antes do lance inicial do adversário.</p>
-      )}
-
-      <div className={items.length ? 'row actions' : 'row actions hide'}>
-        <button type="button" className="copy" onClick={() => void copyPending()}>
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <rect x="8" y="8" width="12" height="12" rx="2" fill="none" stroke="currentColor" strokeWidth="2" />
-            <path
-              d="M6 16H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            />
-          </svg>
-          {copied ? 'Copiado!' : 'Copiar pendentes'}
-        </button>
-        <button type="button" className="danger" onClick={clearDone}>
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path
-              d="M4 7h16M9 7V5h6v2M7 7l1 12h8l1-12"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          Limpar feitos
-        </button>
-      </div>
 
       {items.length === 0 && (
         <div className="empty-list" role="status">
@@ -276,11 +242,21 @@ export function PuzzleList({
           </div>
           <div>
             <strong>Sua lista ainda está vazia</strong>
-            <p>Escolha os temas nos filtros e toque em Filtrar. Os puzzles entram aqui.</p>
+            <p className="empty-copy desk">Escolha os temas nos filtros e toque em Filtrar. Os puzzles entram aqui.</p>
+            {mobile && !hasFile ? (
+              <>
+                <p className="empty-copy mob">Carregue o CSV do Lichess para filtrar os puzzles neste aparelho.</p>
+                <button type="button" className="primary empty-load" onClick={onLoadCsv}>
+                  Carregar CSV
+                </button>
+              </>
+            ) : (
+              <p className="empty-copy mob">Toque em Filtros, ajuste e veja os resultados. Os puzzles entram aqui.</p>
+            )}
           </div>
         </div>
       )}
-      {items.length > 0 && visible.length === 0 && <p className="m">Nenhum puzzle com esse filtro.</p>}
+      {items.length > 0 && visible.length === 0 && <p className="hint">Nenhum puzzle com esse filtro.</p>}
       {visible.length > 0 && (
         <div className="scroller" ref={scrollerRef}>
           <div className="scroller-inner" style={{ height: `${virtualizer.getTotalSize()}px` }}>
@@ -295,6 +271,7 @@ export function PuzzleList({
                   ref={virtualizer.measureElement}
                   className={checked ? 'puzzle d' : 'puzzle'}
                   style={{ transform: `translateY(${virtualRow.start}px)` }}
+                  onClick={(event) => openPuzzle(event, entry.x.i, checked)}
                 >
                   <label className="tick">
                     <input
@@ -316,16 +293,18 @@ export function PuzzleList({
                       Rating {entry.x.r}
                     </a>
                     <span className="id">{entry.x.i}</span>
-                    {typeof entry.x.pop === 'number' && <span className="pop">Pop. {entry.x.pop}</span>}
+                    {typeof entry.x.pop === 'number' && (
+                      <span className={filters.sort === 'pop' ? 'pop sort-metric' : 'pop'}>Pop. {entry.x.pop}</span>
+                    )}
                     {filters.sort === 'moves' && (
-                      <span className="pop">
+                      <span className="pop sort-metric">
                         {typeof entry.x.moves === 'number'
                           ? `${entry.x.moves} ${entry.x.moves === 1 ? 'lance' : 'lances'}`
                           : 'Lances indisponíveis'}
                       </span>
                     )}
                     {filters.sort === 'plays' && (
-                      <span className="pop">
+                      <span className="pop sort-metric">
                         {typeof entry.x.plays === 'number'
                           ? `${entry.x.plays} ${entry.x.plays === 1 ? 'partida' : 'partidas'}`
                           : 'Partidas indisponíveis'}
@@ -338,7 +317,7 @@ export function PuzzleList({
           </div>
         </div>
       )}
-      <p className="m">{sync}</p>
+      <p className="hint sync-note">{sync}</p>
     </details>
   )
 }
