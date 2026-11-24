@@ -157,6 +157,20 @@ function sortKey(value: unknown): SortKey {
   return DEFAULT_FILTERS.sort
 }
 
+export function startFilters(): FilterPrefs {
+  const stored = loadFilters()
+  return {
+    ...DEFAULT_FILTERS,
+    themes: [],
+    extra: '',
+    limit: stored.limit,
+    random: stored.random,
+    sort: stored.sort,
+    order: stored.order,
+    skipDone: stored.skipDone,
+  }
+}
+
 export function loadFilters(): FilterPrefs {
   const stored = readJson<Partial<FilterPrefs>>(FILTERS_KEY)
   if (!stored) {

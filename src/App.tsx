@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
-import { activeChips } from './activeFilters.ts'
+import { activeChips, hasThemeFilter } from './activeFilters.ts'
 import { AppHeader } from './components/AppHeader.tsx'
 import { FilterChips } from './components/FilterChips.tsx'
 import { ScanProgress } from './components/ScanProgress.tsx'
@@ -9,8 +9,7 @@ import {
   advanceDaily,
   loadDaily,
   loadDone,
-  loadFilters,
-  loadList,
+  startFilters,
   loadTheme,
   saveDaily,
   saveDone,
@@ -31,14 +30,13 @@ const FilterPanel = lazy(() =>
 const SYNC_LOCAL = 'O progresso fica salvo só neste navegador.'
 
 export default function App() {
-  const [boot] = useState(() => loadList())
-  const [items, setItems] = useState<PuzzleItem[]>(() => boot?.items ?? [])
-  const [info, setInfo] = useState(() => boot?.info ?? '')
+  const [items, setItems] = useState<PuzzleItem[]>([])
+  const [info, setInfo] = useState('')
   const [done, setDone] = useState<Set<string>>(() => loadDone())
   const [sync, setSync] = useState(SYNC_LOCAL)
   const [listVersion, setListVersion] = useState(0)
-  const [startOpen] = useState(() => (boot?.items.length ?? 0) === 0)
-  const [filters, setFilters] = useState<FilterPrefs>(() => loadFilters())
+  const [startOpen] = useState(true)
+  const [filters, setFilters] = useState<FilterPrefs>(() => startFilters())
   const [daily, setDaily] = useState<DailyProgress>(() => loadDaily())
   const [theme, setTheme] = useState<ThemeChoice>(() => loadTheme())
   const [view, setView] = useState<ViewMode>('all')
@@ -77,6 +75,14 @@ export default function App() {
   useEffect(() => {
     filtersRef.current = filters
   }, [filters])
+
+  useEffect(() => {
+    if (window.matchMedia('(min-width: 960px)').matches) return
+    if (sheetPushed.current) return
+    history.pushState({ plSheet: 1 }, '')
+    sheetPushed.current = true
+    setSheetOpen(true)
+  }, [])
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
@@ -140,6 +146,7 @@ export default function App() {
     const next = { ...filtersRef.current, ...patch }
     filtersRef.current = next
     setFilters(next)
+    if (!hasThemeFilter(next)) return
     void filterRef.current?.run(next)
   }
 

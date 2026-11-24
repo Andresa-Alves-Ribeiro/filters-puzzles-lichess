@@ -71,7 +71,7 @@ export type FilterResult = {
 }
 
 export const DEFAULT_FILTERS: FilterPrefs = {
-  themes: ['fork'],
+  themes: [],
   extra: '',
   mode: 'all',
   minMoves: '1',

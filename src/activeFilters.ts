@@ -7,14 +7,12 @@ export type ActiveChip = {
   patch: Partial<FilterPrefs>
 }
 
-export const QUICK_FILTERS = [
-  { key: 'fork', label: 'Garfo' },
-  { key: 'pin', label: 'Cravada' },
-  { key: 'mateIn2', label: 'Mate em 2' },
-] as const
-
 function tokens(extra: string): string[] {
   return extra.trim().split(/\s+/).filter(Boolean)
+}
+
+export function hasThemeFilter(filters: FilterPrefs): boolean {
+  return filters.themes.length > 0 || tokens(filters.extra).length > 0
 }
 
 export function activeChips(filters: FilterPrefs): ActiveChip[] {

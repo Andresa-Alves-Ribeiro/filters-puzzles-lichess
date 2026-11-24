@@ -1,4 +1,4 @@
-import { activeChips, QUICK_FILTERS } from '../activeFilters.ts'
+import { activeChips } from '../activeFilters.ts'
 import { DEFAULT_FILTERS, type FilterPrefs } from '../types.ts'
 
 type FilterChipsProps = {
@@ -9,24 +9,7 @@ type FilterChipsProps = {
 
 export function FilterChips({ filters, busy = false, onPatch }: FilterChipsProps) {
   const chips = activeChips(filters)
-  if (chips.length === 0) {
-    return (
-      <div className="filter-chips" role="region" aria-label="Filtros rápidos" aria-busy={busy}>
-        {QUICK_FILTERS.map((item) => (
-          <button
-            key={item.key}
-            type="button"
-            className="filter-chip"
-            aria-label={`Filtrar por ${item.label}`}
-            disabled={busy}
-            onClick={() => onPatch({ themes: [item.key] })}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
-    )
-  }
+  if (chips.length === 0) return null
 
   return (
     <div className="filter-chips" role="region" aria-label="Filtros ativos" aria-busy={busy}>
