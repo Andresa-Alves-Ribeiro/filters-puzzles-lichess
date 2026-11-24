@@ -242,7 +242,7 @@ export function PuzzleList({
           </div>
           <div>
             <strong>Sua lista ainda está vazia</strong>
-            <p className="empty-copy desk">Escolha os temas nos filtros e toque em Filtrar. Os puzzles entram aqui.</p>
+            <p className="empty-copy desk">Escolha ao menos um tema nos filtros e toque em Filtrar. Os puzzles entram aqui.</p>
             {mobile && !hasFile ? (
               <>
                 <p className="empty-copy mob">Carregue o CSV do Lichess para filtrar os puzzles neste aparelho.</p>
@@ -251,7 +251,7 @@ export function PuzzleList({
                 </button>
               </>
             ) : (
-              <p className="empty-copy mob">Toque em Filtros, ajuste e veja os resultados. Os puzzles entram aqui.</p>
+              <p className="empty-copy mob">Toque em Filtros, escolha ao menos um tema e veja os resultados.</p>
             )}
           </div>
         </div>

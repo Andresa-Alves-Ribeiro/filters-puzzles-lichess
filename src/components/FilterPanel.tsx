@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useImperativeHandle, useMemo, useRef, useState, type Ref, type RefObject } from 'react'
-import { sameQuery, sameSort } from '../activeFilters.ts'
+import { hasThemeFilter, sameQuery, sameSort } from '../activeFilters.ts'
 import { describeFilter, filterCsv, isCompressed } from '../filterCsv.ts'
 import { keepCsv, loadKeptCsv } from '../csvStore.ts'
 import { DEFAULT_FILTERS, type FilterPrefs, type FilterResult, type PuzzleItem, type SortKey, type ViewMode } from '../types.ts'
@@ -209,6 +209,10 @@ export function FilterPanel({
   }
 
   const runFilter = useCallback(async (prefs: FilterPrefs): Promise<boolean> => {
+    if (!hasThemeFilter(prefs)) {
+      setStatus('Escolha ao menos um tema. O filtro é obrigatório para começar.')
+      return false
+    }
     if (!file) return false
     const gen = ++runGen.current
     abortRef.current?.abort()
@@ -300,17 +304,24 @@ export function FilterPanel({
   const sortChanged = !sameSort(draft, filters)
   const viewChanged = draftView !== view
   const dirty = queryChanged || sortChanged || viewChanged
-  const applyLabel = !file
-    ? 'Salvar filtros'
-    : filtering && !dirty
-      ? 'Filtrando…'
-      : !dirty && resultCount > 0
-        ? resultCount === 1
-          ? 'Ver 1 resultado'
-          : `Ver ${resultCount.toLocaleString('pt-BR')} resultados`
-        : 'Ver resultados'
+  const mustPickTheme = !hasThemeFilter(draft) && (queryChanged || !hasItems)
+  const applyLabel = mustPickTheme
+    ? 'Escolha um tema'
+    : !file
+      ? 'Salvar filtros'
+      : filtering && !dirty
+        ? 'Filtrando…'
+        : !dirty && resultCount > 0
+          ? resultCount === 1
+            ? 'Ver 1 resultado'
+            : `Ver ${resultCount.toLocaleString('pt-BR')} resultados`
+          : 'Ver resultados'
 
   function applyDraft() {
+    if (mustPickTheme) {
+      setStatus('Escolha ao menos um tema. O filtro é obrigatório para começar.')
+      return
+    }
     if (queryChanged) {
       onChange({ ...draft })
       if (file) void runFilter(draft)
@@ -342,7 +353,7 @@ export function FilterPanel({
             <button type="button" className="ghost" onClick={clearDraft}>
               Limpar
             </button>
-            <button type="button" className="primary" aria-busy={filtering} onClick={applyDraft}>
+            <button type="button" className="primary" aria-busy={filtering} disabled={filtering || mustPickTheme} onClick={applyDraft}>
               {applyLabel}
             </button>
           </>
@@ -389,7 +400,12 @@ export function FilterPanel({
         <button type="button" className="ghost" onClick={clearFilters}>
           Limpar filtros
         </button>
-        <button type="button" className="primary" disabled={!file || filtering} onClick={() => void runFilter(filters)}>
+        <button
+          type="button"
+          className="primary"
+          disabled={!file || filtering || !hasThemeFilter(filters)}
+          onClick={() => void runFilter(filters)}
+        >
           {filtering ? 'Filtrando…' : 'Filtrar'}
         </button>
       </div>
@@ -422,6 +438,9 @@ function FilterFields({ prefs, fileRef, onFile, onPatch, onToggleTheme }: Filter
       />
 
       <h2 className="sp">2. Temas</h2>
+      {!hasThemeFilter(prefs) && (
+        <p className="hint">Escolha ao menos um tema. Sem tema o jogo não começa.</p>
+      )}
       <ThemePicker selected={selected} onToggle={onToggleTheme} />
       <div className="row">
         <label className="grow">
