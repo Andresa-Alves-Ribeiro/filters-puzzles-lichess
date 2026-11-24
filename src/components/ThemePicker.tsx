@@ -63,7 +63,11 @@ export function ThemePicker({ selected, onToggle }: ThemePickerProps) {
             setOpen(true)
           }}
           onKeyDown={(event) => {
-            if (event.key === 'Escape') setOpen(false)
+            if (event.key === 'Escape') {
+              if (!open) return
+              event.stopPropagation()
+              setOpen(false)
+            }
             if (event.key === 'Backspace' && !query) {
               const last = [...selected].at(-1)
               if (last) onToggle(last)

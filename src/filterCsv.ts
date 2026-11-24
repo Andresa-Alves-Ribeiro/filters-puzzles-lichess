@@ -26,6 +26,7 @@ export async function filterCsv(
   file: File,
   options: FilterOptions,
   onProgress: (progress: FilterProgress) => void,
+  signal?: AbortSignal,
 ): Promise<FilterResult> {
   const all = options.mode === 'all'
   const lim = Math.min(10000, Math.max(1, options.limit || 500))
@@ -71,24 +72,44 @@ export async function filterCsv(
     }
   }
 
+  if (signal?.aborted) throw new DOMException('The operation was aborted.', 'AbortError')
   const reader = file.stream().getReader()
   const dec = new TextDecoder()
   let last = 0
-  for (;;) {
-    const { done: finished, value } = await reader.read()
-    if (finished) break
-    read += value.length
-    buf += dec.decode(value, { stream: true })
-    const lines = buf.split('\n')
-    buf = lines.pop() ?? ''
-    for (const s of lines) line(s.replace(/\r$/, ''))
-    if (read - last > 4e6) {
-      last = read
-      onProgress({ read, total: file.size, rows, matches: cnt })
-      await new Promise((resolve) => setTimeout(resolve))
+  const onAbort = () => {
+    void reader.cancel()
+  }
+  signal?.addEventListener('abort', onAbort, { once: true })
+  try {
+    for (;;) {
+      if (signal?.aborted) throw new DOMException('The operation was aborted.', 'AbortError')
+      const { done: finished, value } = await reader.read()
+      if (signal?.aborted) throw new DOMException('The operation was aborted.', 'AbortError')
+      if (finished) break
+      read += value.length
+      buf += dec.decode(value, { stream: true })
+      const lines = buf.split('\n')
+      buf = lines.pop() ?? ''
+      for (const s of lines) line(s.replace(/\r$/, ''))
+      if (read - last > 4e6) {
+        last = read
+        onProgress({ read, total: file.size, rows, matches: cnt })
+        await new Promise((resolve) => setTimeout(resolve))
+      }
+    }
+    buf += dec.decode()
+    if (buf) line(buf.replace(/\r$/, ''))
+    if (signal?.aborted) throw new DOMException('The operation was aborted.', 'AbortError')
+    return { items: sortItems(res, options.sort, options.order), rows, matches: cnt }
+  } catch (error) {
+    if (signal?.aborted) throw new DOMException('The operation was aborted.', 'AbortError')
+    throw error
+  } finally {
+    signal?.removeEventListener('abort', onAbort)
+    try {
+      reader.releaseLock()
+    } catch {
+      /* o cancelamento já soltou o leitor */
     }
   }
-  buf += dec.decode()
-  if (buf) line(buf.replace(/\r$/, ''))
-  return { items: sortItems(res, options.sort, options.order), rows, matches: cnt }
 }
