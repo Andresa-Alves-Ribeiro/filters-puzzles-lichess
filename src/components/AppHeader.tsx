@@ -48,7 +48,12 @@ export function AppHeader({
             {title}
             {listTotal > 0 && (
               <strong className="score">
-                {listDone}/{listTotal}
+                <span aria-hidden="true">
+                  {listDone}/{listTotal}
+                </span>
+                <span className="visually-hidden">
+                  {listDone} de {listTotal} feitos
+                </span>
               </strong>
             )}
           </div>

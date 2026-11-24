@@ -170,7 +170,7 @@ export function PuzzleList({
   }))
 
   return (
-    <details className="card list-card" ref={rememberDetails}>
+    <details id="lista" className="card list-card" ref={rememberDetails}>
       <summary>
         <span className="summary-title">Minha lista</span>
         {items.length > 0 && (

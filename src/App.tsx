@@ -314,6 +314,9 @@ export default function App() {
 
   return (
     <main className={mobile && sheetOpen ? 'is-sheet-open' : undefined} inert={mobile && sheetOpen ? true : undefined}>
+      <a className="skip-link" href="#lista">
+        Ir para a lista
+      </a>
       <AppHeader
         goalToday={goalToday}
         goalPct={goalPct}

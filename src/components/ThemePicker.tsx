@@ -53,6 +53,7 @@ export function ThemePicker({ selected, onToggle }: ThemePickerProps) {
           type="text"
           value={query}
           role="combobox"
+          aria-label="Buscar tema"
           aria-expanded={open}
           aria-controls={listId}
           aria-autocomplete="list"

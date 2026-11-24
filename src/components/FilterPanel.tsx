@@ -417,13 +417,14 @@ function FilterFields({ prefs, fileRef, onFile, onPatch, onToggleTheme }: Filter
         className="file"
         type="file"
         accept=".csv,text/csv"
+        aria-label="Arquivo CSV do Lichess"
         onChange={(event) => onFile(event.target.files?.[0] ?? null)}
       />
 
       <h2 className="sp">2. Temas</h2>
       <ThemePicker selected={selected} onToggle={onToggleTheme} />
       <div className="row">
-        <div className="grow">
+        <label className="grow">
           <span>Outros temas (separados por espaço)</span>
           <input
             type="text"
@@ -431,14 +432,14 @@ function FilterFields({ prefs, fileRef, onFile, onPatch, onToggleTheme }: Filter
             placeholder="ex.: mateIn3 crushing"
             onChange={(event) => onPatch({ extra: event.target.value })}
           />
-        </div>
-        <div>
+        </label>
+        <label>
           <span>Combinar temas</span>
           <select value={prefs.mode} onChange={(event) => onPatch({ mode: event.target.value === 'any' ? 'any' : 'all' })}>
             <option value="all">Todos (E)</option>
             <option value="any">Qualquer (OU)</option>
           </select>
-        </div>
+        </label>
       </div>
 
       <h2 className="sp">3. Lances, rating e popularidade</h2>

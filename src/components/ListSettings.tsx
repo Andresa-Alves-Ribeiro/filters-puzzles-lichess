@@ -14,15 +14,15 @@ export function ListSettings({ filters, view, showView, onFilters, onSort, onVie
     <>
       <div className="row tools settings">
         {showView && (
-          <div>
+          <label>
             <span>Mostrar</span>
             <select value={view} onChange={(event) => onView(event.target.value === 'pend' ? 'pend' : 'all')}>
               <option value="all">Todos</option>
               <option value="pend">Só pendentes</option>
             </select>
-          </div>
+          </label>
         )}
-        <div>
+        <label>
           <span>Ordenar por</span>
           <select
             value={filters.sort}
@@ -39,8 +39,8 @@ export function ListSettings({ filters, view, showView, onFilters, onSort, onVie
             <option value="moves">Lances</option>
             <option value="plays">Partidas</option>
           </select>
-        </div>
-        <div>
+        </label>
+        <label>
           <span>Ordem</span>
           <select
             value={String(filters.order)}
@@ -49,8 +49,8 @@ export function ListSettings({ filters, view, showView, onFilters, onSort, onVie
             <option value="1">Crescente</option>
             <option value="-1">Decrescente</option>
           </select>
-        </div>
-        <div>
+        </label>
+        <label>
           <span>Seleção</span>
           <select
             value={filters.random ? '1' : '0'}
@@ -59,8 +59,8 @@ export function ListSettings({ filters, view, showView, onFilters, onSort, onVie
             <option value="1">Aleatórios</option>
             <option value="0">Primeiros do arquivo</option>
           </select>
-        </div>
-        <div>
+        </label>
+        <label>
           <span>Máx. de puzzles</span>
           <input
             type="number"
@@ -69,7 +69,7 @@ export function ListSettings({ filters, view, showView, onFilters, onSort, onVie
             value={filters.limit}
             onChange={(event) => onFilters({ limit: event.target.value })}
           />
-        </div>
+        </label>
       </div>
       <label className="skip">
         <input

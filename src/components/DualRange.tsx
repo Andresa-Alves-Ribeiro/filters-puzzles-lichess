@@ -56,7 +56,7 @@ export function DualRange({
   }
 
   return (
-    <div className="range">
+    <div className="range" role="group" aria-label={label}>
       <div className="range-label">
         <span>{label}</span>
       </div>
